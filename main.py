@@ -95,6 +95,7 @@ def main():
     parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto", help="Training device")
     parser.add_argument("--bd_mode", type=lambda x: str(x).lower() == "true", default=True, help="Enable constrained BD network")
     parser.add_argument("--death_masking", type=lambda x: str(x).lower() == "true", default=True, help="Enable death masking")
+    parser.add_argument("--compare_algorithm", type=str, default="", help="Compare results against this algorithm")
     args = parser.parse_args()
 
     print("\n" + "=" * 60)

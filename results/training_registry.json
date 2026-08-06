@@ -301,5 +301,22 @@
     "mean_payload_cost": 38335.3,
     "shield_rate": 0.0,
     "eval_episodes": 20
+  },
+  {
+    "run_id": 19,
+    "timestamp": "2026-08-05T19:07:39.399755+00:00",
+    "algorithm": "MAPPO",
+    "safety": true,
+    "n_seeds": 2,
+    "timesteps_per_seed": 2000897,
+    "total_env_steps": 4001794,
+    "mean_return": 12.8516,
+    "ci_95": 0.0064,
+    "p_value_vs_ippo": "0.7148",
+    "n_agents": 4,
+    "n_blocks": 16,
+    "mean_payload_cost": 38335.7,
+    "shield_rate": 0.0,
+    "eval_episodes": 20
   }
 ]

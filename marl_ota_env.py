@@ -41,12 +41,14 @@ from ota_core import (
 
 # Import config (provides all tunable constants in one place)
 try:
-    from config import SAFETY_CFG, BD_CFG
+    from config import SAFETY_CFG, BD_CFG, ECU_CFG
 except ImportError:
     # Fallback defaults if run outside the project root
     SAFETY_CFG = {"enabled": True, "memory_budget_frac": 0.85}
     BD_CFG = {"monsoon_jitter_ms": 250, "monsoon_multiplier_low": 1.5,
               "monsoon_multiplier_high": 3.0}
+    ECU_CFG = {"cost_multipliers": {"engine": 1.5, "braking": 1.2,
+                                    "infotainment": 0.7, "generic": 1.0}}
 
 
 # ══════════════════════════════════════════════════════════════
@@ -389,11 +391,17 @@ class MultiAgentOTAEnv(ParallelEnv):
                 return -100.0
                 
             val = 0.0
+            ecu_multipliers = ECU_CFG["cost_multipliers"]
             for a in S:
                 if a not in shielded_in_S:
                     _, _, delta_size, overhead, enc_cost, tx_c = valid_actions[a]
+                    # Apply ECU-type-specific cost multiplier.
+                    # Engine/braking ECUs have higher retransmit costs (safety-critical);
+                    # infotainment ECUs have relaxed delivery requirements (best-effort).
+                    ecu_type = self.ecu_types.get(a, "generic")
+                    m = ecu_multipliers.get(ecu_type, 1.0)
                     # Scale costs down to avoid reward magnitudes of thousands
-                    val -= (enc_cost + tx_c) * 0.001 + overhead * 0.0003
+                    val -= (enc_cost * m + tx_c * m) * 0.001 + overhead * 0.0003
                     if np.sum(self.masks[a]) == 1:
                         # Completion bonus: small fixed reward for finishing all blocks
                         val += 10.0

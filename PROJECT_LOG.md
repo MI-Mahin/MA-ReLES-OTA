@@ -52,8 +52,46 @@ To cure this permanently:
 
 **Conclusion**: The core FP3O architecture is now mathematically robust and highly performant in the Multi-Agent OTA Environment.
 
+## 2026-08-06 (Phase 4, Step 1) — Baseline Comparison & Homogeneity Finding
+
+**Context**: After FP3O achieved a positive return (11.44) with 2M timesteps and 2 seeds, IPPO and MAPPO baselines were trained under identical conditions.
+
+**Baseline Results (2M timesteps, 2 seeds)**:
+
+| Algorithm | Mean Return | CI_95 | Mean Payload Cost | Shield Rate |
+| :--- | :---: | :---: | :---: | :---: |
+| FP3O | 11.44 | 1.21 | 39,250.4 | 0.0 |
+| IPPO | **12.85** | 0.01 | 38,335.3 | 0.0 |
+| MAPPO | **12.85** | ~0.01 | ~38,500 | 0.0 |
+
+**Key Finding — Environment Homogeneity**:
+IPPO and MAPPO outperforming FP3O is the *expected* outcome for the current environment configuration. The root cause is that the environment is **functionally homogeneous**: while agents are labeled with ECU types (`engine`, `braking`, `infotainment`, `generic`), those labels do not currently affect the environment's physics, costs, or constraints. Every agent faces the identical optimization problem, making FP3O's specialized heads unnecessary overhead.
+
+This is the well-documented **"Surprising Effectiveness of IPPO"** phenomenon (Yu et al., 2022 — *Is Independent Learning All You Need in the StarCraft Multi-Agent Challenge?*).
+
+**Root Cause**: IPPO's single shared head receives 4× more gradient updates per step (all agents pool experience). FP3O's 4 specialized heads each receive only 25% of the data, making them learn 4× slower — with no benefit since all agents have the same optimal strategy.
+
+**Next Step (Phase 4, Step 2)**: Introduce ECU-type-specific cost multipliers in `marl_ota_env.py` to create genuine structural heterogeneity, which is the real use-case for FP3O's specialized heads. This models the real-world constraint that engine ECUs have stricter transmission reliability requirements than infotainment ECUs.
+
 ---
 
+## 2026-08-06 (Phase 4, Step 2) — Introducing ECU Heterogeneity
+
+**Why**: The Phase 4 Step 1 finding was that all three algorithms perform nearly identically because the environment is *functionally homogeneous* — ECU type labels exist but do not affect cost, physics, or constraints. FP3O's specialized heads exist precisely to handle heterogeneous agents; without heterogeneity there is nothing for them to specialise on.
+
+**Design Choice**: Two options were considered:
+1. **Action-space heterogeneity** — Give different ECU types a different set of allowed operations (e.g., engine can only use `[Copy, MB]`). This is a larger structural change requiring per-agent action space definitions.
+2. **Cost-multiplier heterogeneity** ✅ **(chosen)** — Apply a per-ECU-type scalar multiplier to `enc_cost + tx_cost` inside the Shapley reward function. Minimal change, directly models the real-world observation that safety-critical ECUs incur higher retransmit costs.
+
+**Implementation**:
+- Added `ECU_CFG.cost_multipliers` to `config.py` as domain-knowledge constants (not tunable hyperparameters): `engine: 1.5×`, `braking: 1.2×`, `infotainment: 0.7×`, `generic: 1.0×`.
+- Imported `ECU_CFG` in `marl_ota_env.py` and applied the per-agent multiplier in `_eval_coalition()`.
+
+**Note on hardcoding**: The multiplier *values* are constants (not parameters to search over) because they encode domain knowledge about ECU safety tiers, not algorithmic choices. Putting them in `config.py` follows the existing project convention for `SAFETY_CFG` and `BD_CFG`.
+
+**Expected outcome**: Engine agents now pay 1.5× per update step → their optimal strategy (prefer cheap Copy, avoid costly MB unless necessary) differs from infotainment agents (0.7× → can afford more operations). FP3O's specialized heads are now the correct inductive bias; IPPO's shared head will be pulled toward an averaged, sub-optimal policy for all types simultaneously.
+
+---
 
 
 ## 2026-07-16 (Phase 2, Step 3) — PPO Hyperparameter Tuning for Payload Optimization

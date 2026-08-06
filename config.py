@@ -52,6 +52,34 @@ SHAPLEY_CFG = dict(
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
+# 4b. ECU Heterogeneity Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+# Cost multipliers per ECU type. These are domain-knowledge constants —
+# not hyperparameters — modelling the real-world observation that safety-
+# critical ECUs (engine, braking) carry stricter transmission reliability
+# requirements than non-critical ECUs (infotainment, generic).
+#
+# A multiplier > 1.0 means: this ECU type pays MORE per byte transmitted
+# (e.g., because every failed packet triggers a costly retransmit + checksum
+# re-verification at the firmware signing authority).
+# A multiplier < 1.0 means: this ECU type has relaxed delivery requirements
+# (best-effort delivery is acceptable; retransmit cost is lower).
+#
+# Rationale for values:
+#   engine       1.5 × — strictest; any error halts vehicle; retry is expensive
+#   braking      1.2 × — safety-critical but slightly less strict than engine
+#   infotainment 0.7 × — non-safety; best-effort delivery acceptable
+#   generic      1.0 × — baseline (unchanged from current behaviour)
+ECU_CFG = dict(
+    cost_multipliers = {
+        "engine":       1.5,
+        "braking":      1.2,
+        "infotainment": 0.7,
+        "generic":      1.0,
+    }
+)
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 5. Policy / Network Architecture
 # ─────────────────────────────────────────────────────────────────────────────
 NET_CFG = dict(

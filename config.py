@@ -54,28 +54,26 @@ SHAPLEY_CFG = dict(
 # ─────────────────────────────────────────────────────────────────────────────
 # 4b. ECU Heterogeneity Configuration
 # ─────────────────────────────────────────────────────────────────────────────
-# Cost multipliers per ECU type. These are domain-knowledge constants —
-# not hyperparameters — modelling the real-world observation that safety-
-# critical ECUs (engine, braking) carry stricter transmission reliability
-# requirements than non-critical ECUs (infotainment, generic).
+# Per-operation cost multipliers per ECU type.
+# These are domain-knowledge constants modelling the real-world observation
+# that different ECU safety tiers have DIFFERENT preferred operations:
 #
-# A multiplier > 1.0 means: this ECU type pays MORE per byte transmitted
-# (e.g., because every failed packet triggers a costly retransmit + checksum
-# re-verification at the firmware signing authority).
-# A multiplier < 1.0 means: this ECU type has relaxed delivery requirements
-# (best-effort delivery is acceptable; retransmit cost is lower).
+#   engine       — safety-critical: MB (op 2) is preferred (strong checksum);
+#                  Modify (op 1) is most expensive (partial-patch failure risk).
+#   braking      — safety-critical but less strict; MB preferred over Modify.
+#   infotainment — non-critical: Copy (op 0) is cheapest and preferred;
+#                  MB overhead is unjustified.
+#   generic      — baseline; no operation preference.
 #
-# Rationale for values:
-#   engine       1.5 × — strictest; any error halts vehicle; retry is expensive
-#   braking      1.2 × — safety-critical but slightly less strict than engine
-#   infotainment 0.7 × — non-safety; best-effort delivery acceptable
-#   generic      1.0 × — baseline (unchanged from current behaviour)
+# Format: [op0_mult (Copy), op1_mult (Modify), op2_mult (MB)]
+# A multiplier < 1.0 means that operation is cheaper / preferred for this type.
+# A multiplier > 1.0 means that operation is more expensive / discouraged.
 ECU_CFG = dict(
-    cost_multipliers = {
-        "engine":       1.5,
-        "braking":      1.2,
-        "infotainment": 0.7,
-        "generic":      1.0,
+    per_op_multipliers = {
+        "engine":       [1.0, 1.8, 0.6],   # prefer MB; penalise Modify
+        "braking":      [1.0, 1.2, 0.8],   # mild preference for MB
+        "infotainment": [0.6, 1.0, 1.5],   # prefer Copy; penalise MB
+        "generic":      [1.0, 1.0, 1.0],   # no preference (baseline)
     }
 )
 

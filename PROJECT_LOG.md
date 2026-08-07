@@ -93,6 +93,28 @@ This is the well-documented **"Surprising Effectiveness of IPPO"** phenomenon (Y
 
 ---
 
+## 2026-08-07 (Phase 4, Step 3) — Shifting to Operation-Specific Multipliers
+
+**Context**: In the initial heterogeneous training run, IPPO obtained a mean return of `9.15` while FP3O lagged behind at `-12.00`. 
+
+**Diagnosis**:
+Uniformly scaling the cost multipliers (e.g. 1.5× for engine, 0.7× for infotainment) did not change the ordinal preference of operations. For all agents, the optimal policy remained identical: always choose `Copy` (op 0) because it is strictly the cheapest. Since the optimal action strategy remained homogeneous, IPPO still won on sample efficiency (all agents feeding a single shared head). Furthermore, mismatched gradient magnitudes (1.5× vs 0.7×) coming from the environments destabilized the shared backbone.
+
+**Fix**:
+Instead of uniform scaling, we shifted to **per-operation cost multipliers** to force qualitatively different optimal policies for each ECU type:
+- **Engine (Safety-Critical)**: Multipliers `[1.0, 1.8, 0.6]`. Discourages standard binary diff (`Modify`) due to safety verification overheads and incentivizes multi-base diff (`MB`, op 2).
+- **Infotainment (Non-Critical)**: Multipliers `[0.6, 1.0, 1.5]`. Highly rewards `Copy` (op 0) and heavily penalises `MB` (op 2).
+- **Braking**: Multipliers `[1.0, 1.2, 0.8]`.
+- **Generic**: Multipliers `[1.0, 1.0, 1.0]`.
+
+This creates contradictory optimal strategies (Engine prefers MB, Infotainment prefers Copy), which should force IPPO's shared actor head to compromise/plateau, while enabling FP3O's specialized heads to excel.
+
+**Implementation**:
+- Updated `ECU_CFG` in `config.py` to use `per_op_multipliers`.
+- Modified `marl_ota_env.py` to unpack `op` from `valid_actions` and apply `op_mults[int(op)]` in the coalition reward function.
+
+---
+
 
 ## 2026-07-16 (Phase 2, Step 3) — PPO Hyperparameter Tuning for Payload Optimization
 

@@ -1,4 +1,4 @@
 Experiment,Mean_Return,CI_95,p_value_vs_IPPO,Mean_Payload_Cost,Shield_Rate,N_Agents,N_Blocks,Timesteps,Seeds
-FP3O_Safety_True,11.44,1.21,,39250.4,0.0,4,16,2000897,2
-IPPO_Safety_True,12.85,0.01,,38335.3,0.0,4,16,2000897,2
 MAPPO_Safety_True,12.85,0.01,0.7148,38335.7,0.0,4,16,2000897,2
+FP3O_Safety_True,-12.06,250.94,0.4267,52779.3,0.0,4,16,2000897,2
+IPPO_Safety_True,9.15,0.0,,38336.8,0.0,4,16,2000897,2

@@ -47,8 +47,12 @@ except ImportError:
     SAFETY_CFG = {"enabled": True, "memory_budget_frac": 0.85}
     BD_CFG = {"monsoon_jitter_ms": 250, "monsoon_multiplier_low": 1.5,
               "monsoon_multiplier_high": 3.0}
-    ECU_CFG = {"cost_multipliers": {"engine": 1.5, "braking": 1.2,
-                                    "infotainment": 0.7, "generic": 1.0}}
+    ECU_CFG = {"per_op_multipliers": {
+        "engine":       [1.0, 1.8, 0.6],
+        "braking":      [1.0, 1.2, 0.8],
+        "infotainment": [0.6, 1.0, 1.5],
+        "generic":      [1.0, 1.0, 1.0],
+    }}
 
 
 # ══════════════════════════════════════════════════════════════
@@ -391,15 +395,16 @@ class MultiAgentOTAEnv(ParallelEnv):
                 return -100.0
                 
             val = 0.0
-            ecu_multipliers = ECU_CFG["cost_multipliers"]
+            ecu_multipliers = ECU_CFG["per_op_multipliers"]
             for a in S:
                 if a not in shielded_in_S:
-                    _, _, delta_size, overhead, enc_cost, tx_c = valid_actions[a]
-                    # Apply ECU-type-specific cost multiplier.
-                    # Engine/braking ECUs have higher retransmit costs (safety-critical);
-                    # infotainment ECUs have relaxed delivery requirements (best-effort).
+                    _, op, delta_size, overhead, enc_cost, tx_c = valid_actions[a]
+                    # Apply ECU-type-specific and operation-specific cost multiplier.
+                    # Safety-critical ECUs (engine, braking) prefer reliable MB (op 2);
+                    # non-safety ECUs (infotainment) prefer cheap Copy (op 0).
                     ecu_type = self.ecu_types.get(a, "generic")
-                    m = ecu_multipliers.get(ecu_type, 1.0)
+                    op_mults = ecu_multipliers.get(ecu_type, [1.0, 1.0, 1.0])
+                    m = op_mults[int(op)]
                     # Scale costs down to avoid reward magnitudes of thousands
                     val -= (enc_cost * m + tx_c * m) * 0.001 + overhead * 0.0003
                     if np.sum(self.masks[a]) == 1:

@@ -318,5 +318,39 @@
     "mean_payload_cost": 38335.7,
     "shield_rate": 0.0,
     "eval_episodes": 20
+  },
+  {
+    "run_id": 20,
+    "timestamp": "2026-08-06T18:10:40.313043+00:00",
+    "algorithm": "FP3O",
+    "safety": true,
+    "n_seeds": 2,
+    "timesteps_per_seed": 2000897,
+    "total_env_steps": 4001794,
+    "mean_return": -12.065,
+    "ci_95": 250.9427,
+    "p_value_vs_ippo": "0.4267",
+    "n_agents": 4,
+    "n_blocks": 16,
+    "mean_payload_cost": 52779.3,
+    "shield_rate": 0.0,
+    "eval_episodes": 20
+  },
+  {
+    "run_id": 21,
+    "timestamp": "2026-08-06T20:02:51.586613+00:00",
+    "algorithm": "IPPO",
+    "safety": true,
+    "n_seeds": 2,
+    "timesteps_per_seed": 2000897,
+    "total_env_steps": 4001794,
+    "mean_return": 9.1471,
+    "ci_95": 0.0045,
+    "p_value_vs_ippo": "N/A",
+    "n_agents": 4,
+    "n_blocks": 16,
+    "mean_payload_cost": 38336.8,
+    "shield_rate": 0.0,
+    "eval_episodes": 20
   }
 ]

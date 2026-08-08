@@ -115,6 +115,32 @@ This creates contradictory optimal strategies (Engine prefers MB, Infotainment p
 
 ---
 
+## 2026-08-07 (Phase 4, Step 4) — Critical Finding: `agent_id` Gives IPPO an Unfair Advantage
+
+**Training Run**: Run #22 (FP3O, per-op multipliers) vs Run #23 (IPPO, per-op multipliers), 2M timesteps, 2 seeds.
+
+**Results**:
+| Algorithm | Mean Return | CI_95 |
+| :--- | :---: | :---: |
+| IPPO | **16.71** | 0.006 |
+| FP3O | 8.68 | 31.5 |
+
+**Finding**:
+Even with per-operation cost multipliers designed to create contradictory optimal policies between ECU types, IPPO dominated. The root cause is architectural: every agent's observation includes `agent_id`, a one-hot vector encoding which specific agent (ecu_0, ecu_1, ecu_2, ecu_3) is acting. **IPPO's single shared actor head can read this `agent_id` and learn completely different action distributions per-agent conditioned on it** — effectively memorizing a different policy lookup for each of the 4 agents.
+
+In other words, IPPO's "shared" head is not truly shared in the MARL sense: it silently becomes a heterogeneous policy by condition on `agent_id`, and it still benefits from 4× more training data per weight update. IPPO is cheating the heterogeneous benchmark by having the semantic agent identifier directly in its observation.
+
+**Code Checkpoint**: Git commit hash `38ac072` preserves this state where `agent_id` is in the observation and IPPO achieves 16.71 vs FP3O's 8.68 with per-op multipliers.
+
+**Fix (Phase 4, Step 5)**: Replace `agent_id` (numeric index) with an `ecu_type` one-hot in the observation. Under this regime:
+- IPPO's shared head receives a semantic type signal (engine/braking/infotainment/generic) — it can still condition on type, but now has to generalize across agents of the SAME type.
+- FP3O's specialized heads each own an entire ECU type's weight space, giving them a structural inductive bias for their type.
+- This is a much fairer experimental comparison.
+
+*See `research_findings.md` for detailed analysis of this observation for thesis writing.*
+
+---
+
 
 ## 2026-07-16 (Phase 2, Step 3) — PPO Hyperparameter Tuning for Payload Optimization
 

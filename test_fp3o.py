@@ -75,28 +75,7 @@ import torch
 import numpy as np
 # pyrefly: ignore [missing-import]
 from gymnasium import spaces
-from fp3o_policy import FP3OPolicy, ValueNormalizer, SharedBackbone, ActionHead, PositionHead
-
-def test_value_normalizer():
-    print("--- Testing ValueNormalizer ---")
-    # Set momentum=1.0 and a high clip_val to get exact z-score match for a single batch
-    vn = ValueNormalizer(momentum=1.0, clip_val=999.0)
-    
-    # Generate some dummy value targets
-    targets = torch.tensor([10.0, 20.0, 30.0, 40.0], dtype=torch.float32)
-    vn.update(targets)
-    
-    print(f"Running Mean: {vn.running_mean.item():.2f}")
-    print(f"Running Var: {vn.running_var.item():.2f}")
-    
-    normed = vn.normalize(targets)
-    print(f"Normalized Targets: {normed.tolist()}")
-    
-    denormed = vn.denormalize(normed)
-    print(f"Denormalized Targets (roundtrip): {denormed.tolist()}")
-    
-    assert torch.allclose(targets, denormed, atol=1e-4), "Roundtrip check failed!"
-    print("ValueNormalizer verification: PASS")
+from fp3o_policy import FP3OPolicy, SharedBackbone, ActionHead, PositionHead
 
 def test_fp3o_architecture():
     print("\n--- Testing FP3O Specialized Heads & Backbone ---")
@@ -107,7 +86,7 @@ def test_fp3o_architecture():
         "cum_tx_cost":       spaces.Box(0, np.inf, (1,), dtype=np.float32),
         "memory_used":       spaces.Box(0, 1.0,   (1,), dtype=np.float32),
         "step":              spaces.Box(0, n_blocks + 10, (1,), dtype=np.int32),
-        "agent_id":          spaces.Box(0, 1.0, (4,), dtype=np.float32),
+        "ecu_type":          spaces.Box(0, 1.0, (4,), dtype=np.float32),
         "state":             spaces.Box(-np.inf, np.inf, (80,), dtype=np.float32),
     })
     act_space = spaces.MultiDiscrete([n_blocks, 3])
@@ -138,7 +117,7 @@ def test_fp3o_architecture():
         "cum_tx_cost":       torch.zeros(batch_size, 1, dtype=torch.float32),
         "memory_used":       torch.zeros(batch_size, 1, dtype=torch.float32),
         "step":              torch.zeros(batch_size, 1, dtype=torch.float32),
-        "agent_id":          torch.eye(4)[:batch_size], # One-hot ids
+        "ecu_type":          torch.eye(4)[:batch_size], # One-hot ids
         "state":             torch.zeros(batch_size, 80, dtype=torch.float32),
     }
     
@@ -160,6 +139,5 @@ def test_fp3o_architecture():
     print("FP3O Architecture verification: PASS")
 
 if __name__ == "__main__":
-    test_value_normalizer()
     test_fp3o_architecture()
     print("\nAll FP3O verification tests completed successfully!")

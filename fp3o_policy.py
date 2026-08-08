@@ -338,15 +338,7 @@ class FP3OPolicy(ActorCriticPolicy):
                 self.observation_space, latent_dim=self.latent_dim, is_critic=True, algorithm=self.algorithm
             ).to(self.device)
 
-        # Build mapping buffer from one-hot agent index to ecu type index
-        if isinstance(observation_space, spaces.Dict) and "agent_id" in observation_space.spaces:
-            n_agents = observation_space.spaces["agent_id"].shape[0]
-        else:
-            n_agents = 4  # safe default fallback
-        
-        self.register_buffer("agent_idx_to_ecu_type", torch.tensor([
-            i % len(ECU_TYPES) for i in range(n_agents)
-        ], dtype=torch.long))
+
 
     def _build_mlp_extractor(self) -> None:
         """
@@ -435,10 +427,9 @@ class FP3OPolicy(ActorCriticPolicy):
             # Shared head for all agents
             action_logits   = self.action_heads[0](latent_pi)
             position_logits = self.position_heads[0](latent_pi)
-        elif obs is not None and isinstance(obs, dict) and "agent_id" in obs:
-            agent_id_batch = obs["agent_id"]  # shape: (batch_size, n_agents)
-            agent_indices = agent_id_batch.argmax(dim=-1)  # shape: (batch_size,)
-            batch_ecu_type_indices = self.agent_idx_to_ecu_type[agent_indices]  # shape: (batch_size,)
+        elif obs is not None and isinstance(obs, dict) and "ecu_type" in obs:
+            ecu_type_batch = obs["ecu_type"]  # shape: (batch_size, 4)
+            batch_ecu_type_indices = ecu_type_batch.argmax(dim=-1)  # shape: (batch_size,)
 
             action_logits_stacked = torch.stack([
                 head(latent_pi) for head in self.action_heads

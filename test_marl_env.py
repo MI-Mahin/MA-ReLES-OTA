@@ -156,7 +156,7 @@ def test_death_masking():
         obs, rewards, terms, truncs, infos = env.step(actions)
         step += 1
 
-        # Check: terminated agents must have zero-vector obs (except agent_id)
+        # Check: terminated agents must have zero-vector obs (except ecu_type)
         for agent in env.possible_agents:
             if terms[agent] or truncs[agent]:
                 a_obs = obs[agent]
@@ -164,7 +164,7 @@ def test_death_masking():
                 enc_sum  = float(a_obs["cum_encoding_cost"][0])
                 tx_sum   = float(a_obs["cum_tx_cost"][0])
                 mem_sum  = float(a_obs["memory_used"][0])
-                id_sum   = float(np.sum(a_obs["agent_id"]))   # should be 1.0 (one-hot)
+                id_sum   = float(np.sum(a_obs["ecu_type"]))   # should be 1.0 (one-hot)
 
                 zeros_ok  = (mask_sum == 0) and (enc_sum == 0) and (tx_sum == 0) and (mem_sum == 0)
                 id_ok     = abs(id_sum - 1.0) < 1e-5
@@ -172,7 +172,7 @@ def test_death_masking():
                 if not death_mask_verified[agent]:
                     if zeros_ok and id_ok:
                         print(f"  ✅  {agent} death mask CORRECT at step {step}  "
-                              f"(all zeros, agent_id={a_obs['agent_id'].tolist()})")
+                              f"(all zeros, ecu_type={a_obs['ecu_type'].tolist()})")
                         death_mask_verified[agent] = True
                     else:
                         print(f"  ❌  {agent} death mask WRONG at step {step}  "

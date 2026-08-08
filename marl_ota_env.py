@@ -117,11 +117,11 @@ class MultiAgentOTAEnv(ParallelEnv):
 
         # ECU type labels for FP3O heterogeneous action heads.
         # Valid types: "engine", "braking", "infotainment", "generic"
-        _default_types = ["engine", "braking", "infotainment", "generic"]
+        self.ecu_types_list = ["engine", "braking", "infotainment", "generic"]
         self.ecu_types: Dict[str, str] = {
             f"ecu_{i}": (
-                ecu_types.get(f"ecu_{i}", _default_types[i % len(_default_types)])
-                if ecu_types else _default_types[i % len(_default_types)]
+                ecu_types.get(f"ecu_{i}", self.ecu_types_list[i % len(self.ecu_types_list)])
+                if ecu_types else self.ecu_types_list[i % len(self.ecu_types_list)]
             )
             for i in range(n_agents)
         }
@@ -170,7 +170,7 @@ class MultiAgentOTAEnv(ParallelEnv):
           cum_tx_cost      : Box(1,)  — accumulated transmission cost
           memory_used      : Box(1,)  — fraction of memory budget used [0,1]
           step             : Box(1,)  — current step count
-          agent_id         : Box(n_agents,)  — one-hot agent identifier
+          ecu_type         : Box(4,)  — one-hot ECU type identifier (engine, braking, infotainment, generic)
                              (preserved even in zero-vector death-mask obs)
           state            : Box(state_dim,) — global state representation
         """
@@ -181,7 +181,7 @@ class MultiAgentOTAEnv(ParallelEnv):
             "cum_tx_cost":       spaces.Box(0, np.inf, (1,), dtype=np.float32),
             "memory_used":       spaces.Box(0, 1.0,   (1,), dtype=np.float32),
             "step":              spaces.Box(0, self.n_blocks + 10, (1,), dtype=np.int32),
-            "agent_id":          spaces.Box(0, 1.0, (self.n_agents_total,), dtype=np.float32),
+            "ecu_type":          spaces.Box(0, 1.0, (4,), dtype=np.float32),
             "state":             spaces.Box(-np.inf, np.inf, (state_dim,), dtype=np.float32),
         })
 
@@ -268,22 +268,23 @@ class MultiAgentOTAEnv(ParallelEnv):
         2. The critic can still identify which agents are "dead" via the
            zero-pattern, and learn to predict the post-death average reward.
         """
-        # One-hot agent identity vector (always present)
-        agent_idx  = self.possible_agents.index(agent)
-        agent_id_vec = np.zeros(self.n_agents_total, dtype=np.float32)
-        agent_id_vec[agent_idx] = 1.0
+        # One-hot ECU type identity vector (always present)
+        ecu_type = self.ecu_types.get(agent, "generic")
+        ecu_idx  = self.ecu_types_list.index(ecu_type)
+        ecu_type_vec = np.zeros(4, dtype=np.float32)
+        ecu_type_vec[ecu_idx] = 1.0
         
         state = self._get_global_state()
 
         if self.terminations[agent] or self.truncations[agent]:
-            # ── DEATH MASK: zero everything except agent_id ──
+            # ── DEATH MASK: zero everything except ecu_type ──
             return {
                 "mask":              np.zeros(self.n_blocks, dtype=np.int8),
                 "cum_encoding_cost": np.zeros(1, dtype=np.float32),
                 "cum_tx_cost":       np.zeros(1, dtype=np.float32),
                 "memory_used":       np.zeros(1, dtype=np.float32),
                 "step":              np.zeros(1, dtype=np.int32),
-                "agent_id":          agent_id_vec,
+                "ecu_type":          ecu_type_vec,
                 "state":             state,
             }
 
@@ -300,7 +301,7 @@ class MultiAgentOTAEnv(ParallelEnv):
                                      dtype=np.float32
                                  ),
             "step":              np.array([self.current_step[agent]], dtype=np.int32),
-            "agent_id":          agent_id_vec,
+            "ecu_type":          ecu_type_vec,
             "state":             state,
         }
 

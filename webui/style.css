@@ -77,6 +77,26 @@ h3 {
   font-size: 0.98rem;
 }
 
+.terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 18px;
+  margin-bottom: 8px;
+}
+
+.terminal-header h3 {
+  margin: 0;
+}
+
+.copy-btn {
+  min-height: auto;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
 .typing {
   display: inline-block;
   margin-top: 8px;
@@ -302,6 +322,14 @@ pre {
   color: #000;
   font: 0.86rem/1.45 Consolas, "Courier New", monospace;
   white-space: pre-wrap;
+}
+
+pre::-webkit-scrollbar {
+  width: 10px;
+}
+
+pre::-webkit-scrollbar-thumb {
+  background: #c7c7c7;
 }
 
 .charts {

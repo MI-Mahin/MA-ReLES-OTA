@@ -9,12 +9,14 @@ const metricsBody = document.querySelector("#metricsTable tbody");
 const leaderboard = document.querySelector("#leaderboard");
 const charts = document.querySelector("#charts");
 const logBox = document.querySelector("#logBox");
+const copyOutputBtn = document.querySelector("#copyOutputBtn");
 const chartModal = document.querySelector("#chartModal");
 const chartModalTitle = document.querySelector("#chartModalTitle");
 const chartModalImage = document.querySelector("#chartModalImage");
 
 let cudaAvailable = false;
 let totalTimesteps = Number(field("timesteps").value);
+let autoScrollEnabled = false;
 
 function field(name) {
   return form.elements.namedItem(name);
@@ -77,6 +79,15 @@ function setDeviceOptions(device) {
   updateRecommendation();
 }
 
+function formatElapsedValue(value) {
+  if (value === null || value === undefined || value === "") return "-";
+  const text = String(value).trim();
+  if (!text || text === "-") return "-";
+  const numeric = Number(text);
+  if (Number.isFinite(numeric)) return `${numeric.toLocaleString()} s`;
+  return `${text} s`;
+}
+
 function renderMetrics(metrics = {}) {
   metricsBody.innerHTML = "";
   const entries = Object.entries(metrics);
@@ -92,7 +103,7 @@ function renderMetrics(metrics = {}) {
 
   document.querySelector("#fps").textContent = metrics["time / fps"] || metrics.fps || "-";
   document.querySelector("#iterations").textContent = metrics["time / iterations"] || metrics.iterations || "-";
-  document.querySelector("#elapsed").textContent = metrics["time / time_elapsed"] || metrics.time_elapsed || "-";
+  document.querySelector("#elapsed").textContent = formatElapsedValue(metrics["time / time_elapsed"] || metrics.time_elapsed || "-");
 }
 
 function renderLeaderboard(rows = []) {
@@ -148,6 +159,51 @@ function renderCharts(items = []) {
   });
 }
 
+function syncTerminalScroll(state) {
+  const running = Boolean(state.running);
+  autoScrollEnabled = running;
+  if (!running) return;
+  requestAnimationFrame(() => {
+    logBox.scrollTop = logBox.scrollHeight;
+  });
+}
+
+async function copyLastOutputLines() {
+  const rawText = logBox.textContent || "";
+  const lines = rawText.split(/\r?\n/).slice(-10).filter((line) => line.length > 0);
+  const text = lines.join("\n");
+  if (!text) {
+    copyOutputBtn.textContent = "No output yet";
+    setTimeout(() => {
+      copyOutputBtn.textContent = "Copy last 10 lines";
+    }, 1200);
+    return;
+  }
+
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const temp = document.createElement("textarea");
+      temp.value = text;
+      temp.setAttribute("readonly", "");
+      temp.style.position = "fixed";
+      temp.style.left = "-9999px";
+      document.body.appendChild(temp);
+      temp.select();
+      document.execCommand("copy");
+      document.body.removeChild(temp);
+    }
+    copyOutputBtn.textContent = "Copied";
+  } catch (error) {
+    copyOutputBtn.textContent = "Copy failed";
+  }
+
+  setTimeout(() => {
+    copyOutputBtn.textContent = "Copy last 10 lines";
+  }, 1200);
+}
+
 function renderState(state) {
   setDeviceOptions(state.device || {});
   const running = Boolean(state.running);
@@ -165,10 +221,12 @@ function renderState(state) {
   renderLeaderboard(state.leaderboard);
   renderCharts(state.charts);
   logBox.textContent = (state.logs || []).join("\n");
-  logBox.scrollTop = logBox.scrollHeight;
+  syncTerminalScroll(state);
 }
 
 form.addEventListener("input", updateRecommendation);
+
+copyOutputBtn.addEventListener("click", copyLastOutputLines);
 
 charts.addEventListener("click", (event) => {
   const card = event.target.closest(".chart-card");

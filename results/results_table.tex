@@ -1,0 +1,67 @@
+% ============================================================
+% Statistical comparison: IPPO (type-conditioned) vs FP3O (specialized heads)
+% Heterogeneous fleet, per-operation cost multipliers, Run #24 (IPPO) vs Run #25 (FP3O)
+%
+% REQUIRED PACKAGES — add these to your thesis preamble if not already present:
+%   \usepackage{booktabs}
+%   \usepackage{threeparttable}
+%
+% All values computed directly from raw_seed_returns.json (n=2 seeds per arm)
+% via scipy.stats.ttest_ind(equal_var=False) — Welch's t-test. Recomputed
+% independently and cross-checked exactly against training_registry.json.
+% ============================================================
+
+\begin{table}[htbp]
+\centering
+\caption{Statistical comparison of type-conditioned IPPO and specialized-head
+FP3O under the heterogeneous (per-operation cost multiplier) OTA environment.
+Both algorithms trained for 2{,}000{,}897 timesteps/seed, $n=2$ seeds,
+$n_{\text{agents}}=4$, $n_{\text{blocks}}=16$, evaluated over 20 deterministic
+episodes per seed.}
+\label{tab:ippo_vs_fp3o_hetero}
+
+\begin{threeparttable}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Algorithm} & \textbf{Mean Return} & \textbf{95\% CI ($\pm$)} & \textbf{SD} & \textbf{n (seeds)} & \textbf{Shield Rate} \\
+\midrule
+IPPO (type-conditioned)  & 16.7137 & 0.0052  & 0.0006 & 2 & 0.0\% \\
+FP3O (specialized heads) & 15.8843 & 10.5264 & 1.1716 & 2 & 0.0\% \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item Both algorithms achieve a 0\% safety-shield trigger rate at this training
+stage; no safety-cost trade-off is observable between these two specific runs
+(see \S\ref{sec:limitations} for discussion).
+\end{tablenotes}
+\end{threeparttable}
+
+\bigskip
+
+\begin{threeparttable}
+\begin{tabular}{lc}
+\toprule
+\textbf{Statistic} & \textbf{Value} \\
+\midrule
+Welch's $t$-statistic                      & $t = 1.001$ \\
+Degrees of freedom (Welch--Satterthwaite)  & $df \approx 1.00$ \\
+$p$-value (two-tailed)                     & $p = 0.500$ \\
+Cohen's $d$ (pooled SD)                    & $d = 1.001$ \\
+Hedges' $g$ (small-$n$ corrected)          & $g = 0.572$ \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item $H_0$: no difference in mean return between IPPO and FP3O is \emph{not
+rejected} ($p = 0.500 > 0.05$). Point estimate favors IPPO by 0.83 return
+units, and the nominal effect size is large by Cohen's convention
+($d \approx 1.0$), but with $n=2$ per arm the Welch--Satterthwaite
+$df \approx 1$, so this test has negligible statistical power and the effect
+size estimate itself carries very wide uncertainty. Report as directionally
+suggestive of parity between IPPO and FP3O, not as a confirmed statistically
+significant result in either direction.
+\end{tablenotes}
+\end{threeparttable}
+
+\end{table}

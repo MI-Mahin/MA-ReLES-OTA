@@ -2,127 +2,69 @@
 
 ### Multi-Agent Reinforcement Learning for Coordinated Automotive OTA Updates
 
-> A high-performance research extension of the [ReLES-OTA (2025)](https://github.com/) framework — scaling single-ECU firmware optimization into a full **Multi-Agent RL** coordination system for resource-constrained vehicular networks.
+> A high-performance research extension of the **ReLES-OTA** framework — scaling single-ECU firmware optimization into a full **Multi-Agent RL** coordination system for resource-constrained vehicular networks.
 
 ---
 
-## Overview
+## 🔬 Updated Research Hypothesis & Focus
 
-Modern vehicles are **"Data Centers on Wheels"** — containing dozens of heterogeneous ECUs (Engine, Braking, Infotainment) that must often be updated simultaneously over constrained mobile networks.
+As modern vehicles transition into software-defined platforms, they house a heterogeneous fleet of Electronic Control Units (ECUs) with conflicting safety, latency, and reliability requirements. Our research has evolved from a simple baseline comparison to addressing a fundamental architectural question in Multi-Agent Reinforcement Learning (MARL):
 
-**The Combinatorial Optimization Gap:**
+### The Parameter-Sharing Dilemma in Heterogeneous Fleets
+*   **Partial Parameter Sharing (FP3O)**: Keeps a shared feature extraction backbone but uses specialized policy/action heads per ECU type to prevent policy interference.
+*   **Full Parameter Sharing with Type-Conditioning (IPPO/MAPPO)**: Employs a single unified network but conditions the inputs on a one-hot `ecu_type` vector, relying on the network's capacity to represent distinct behaviors internally.
 
-> How can multiple agents coordinate block-update sequences when competing for a shared, constrained vehicle memory pool under adverse network jitter?
-
-This project addresses that gap using state-of-the-art MARL coordination algorithms under the **Centralized Training, Decentralized Execution (CTDE)** paradigm.
-
----
-
-## 🔬 Research Phases
-
-### Phase 1 — Bangladesh-Specific Benchmarking _(Completed)_
-
-Replicated and localized the single-agent PPO framework for the Bangladeshi network environment.
-
-| Parameter        | Value     |
-| ---------------- | --------- |
-| Injected Latency | 120–250ms |
-| Packet Loss      | 3–8%      |
-| Memory Budget    | 60%       |
-
-**Results vs. sequential baseline:**
-
-- 📉 **21% reduction** in payload cost
-- 📉 **22% lower** memory overhead
+### Formal Hypotheses
+*   **$H_0$ (Null)**: Explicit partial parameter sharing (specialized action heads per ECU type) is required to resolve conflicting action policies (e.g., safety-critical Engine preferring multi-base delta updates vs. Infotainment preferring simple copy operations).
+*   **$H_1$ (Alternative)**: Full parameter sharing with type-conditioning achieves equal or superior returns and convergence rates due to 100% sample reuse across the fleet, making specialized policy heads redundant.
 
 ---
 
-### Phase 2 — Multi-Agent Scaling & Coordination _(In Progress)_
+## 📊 Key Experimental Findings
 
-Refactoring the environment to support the CTDE paradigm for **N concurrent ECU agents**, with full Shapley-based credit assignment and CBF safety shields.
+Our 2-million timestep, multi-seed benchmarks revealed critical insights for vehicular MARL scheduling:
 
----
-
-## Architectural Pillars
-
-| Pillar          | Paper      | Implementation                                                                                            |
-| --------------- | ---------- | --------------------------------------------------------------------------------------------------------- |
-| **Stability**   | MAPPO      | Centralized Critic with Death Masking (`0_a`) to stabilize training as ECUs finish at different times     |
-| **Versatility** | FP3O       | Partial Parameter Sharing — shared backbone for firmware encoding + unique action heads per hardware type |
-| **Fairness**    | MARL-CC    | Monte Carlo Shapley Values for credit assignment based on marginal contribution to team efficiency        |
-| **Safety**      | RSR-RSMARL | CBF-based Safety Shield preventing RL actions from exceeding hardware register or RAM limits              |
+1.  **Homogeneous Fleet Parity**: In a homogeneous environment (where ECU type labels do not alter reward functions), all algorithms converged to the same return (~12.85). IPPO/MAPPO had a slight edge in sample efficiency, as FP3O's specialized heads only received 25% of the update data.
+2.  **Reward-Scale Heterogeneity Failure**: Uniformly scaling rewards (e.g., Engine paying 1.5× more than Infotainment for all actions) does not change the ordinal preference of operations. All agents still preferred the cheapest option (Copy), rendering specialization unnecessary.
+3.  **Qualitative Policy Divergence (The Per-Operation Cost Model)**: We introduced operation-specific cost multipliers (Engine penalized for binary patch modification but discounted for multi-base verification; Infotainment penalized for verification). This forced a qualitative policy conflict: Engine must learn to prioritize verification, while Infotainment must prioritize copying.
+4.  **The `agent_id` Confounder**: Early benchmarks showed IPPO dominating because it observed the specific `agent_id` (a unique index). The shared head used this to memorize per-agent actions, acting as a hidden heterogeneous lookup. By replacing `agent_id` with a semantic `ecu_type` one-hot vector, we established a fair comparison.
+5.  **Validation of $H_1$**: Even in a fair comparison, **Type-Conditioned IPPO (`16.71`) outperformed/equaled FP3O (`15.88`)**. The shared network has sufficient capacity to resolve type conditioning, while benefit of pooling 100% of fleet transitions to train one set of weights outweighs the specialized head inductive bias.
 
 ---
 
-## Formal Hypothesis
+## 🏗️ Architectural Pillars
 
-**H₀ (Null):** Coordinated MARL provides no significant improvement over independent agents under stochastic network jitter.
-
-**H₁ (Alternative):** A coordinated framework using Shapley-based credit assignment and stochastic latency modeling significantly reduces update completion time variance and prevents system-wide memory overflows.
-
-_Target validation: Phase 2 with 10-seed statistical testing via W&B._
-
----
-
-## Tech Stack
-
-**Hardware**
-
-- CPU: AMD Ryzen 5 5600 (6-Core, 12T) @ 3.50 GHz
-- GPU: NVIDIA GeForce RTX 3060 (12GB VRAM)
-- RAM: 12GB
-
-**Software**
-
-```
-Python 3.10+
-PyTorch
-Gymnasium
-PettingZoo
-Stable Baselines 3        # Extended for MAPPO / FP3O
-Weights & Biases (W&B)    # 10-seed statistical validation [Phase 2]
-```
+| Pillar | Concept / Paper | Implementation |
+| :--- | :--- | :--- |
+| **Stability** | MAPPO / RSR-RSMARL | Centralized Critic with **Death Masking** (retaining `ecu_type` for terminated agents to prevent distribution shifts in vectorized environments). |
+| **Safety** | CBF Safety Shield | Real-time safety filter that intercepts unsafe action choices to prevent memory budget overflows before they execute. |
+| **Fairness** | MARL-CC | Monte Carlo **Shapley Value** calculation in the environment's coalition evaluation to attribute rewards based on an ECU's marginal efficiency contribution. |
+| **Sample Efficiency** | Type-Conditioned IPPO | Fully shared actor-critic weights with one-hot `ecu_type` input conditioning. |
 
 ---
 
-## Project Structure
+## 🛠️ Installation & Tests
 
-```
-MA-ReLES-OTA/
-│
-├── ota_env.py          # Multi-agent env — N-agent dicts + Stochastic Latency Stubs (50–200ms)
-├── train_ppo.py        # Training pipeline — Value Normalization + parallel rollouts (n_envs=10)
-│
-└── results/            # [Phase 2] Shaded learning curves + ablation studies
-                        #           (Shapley / Safety module removal)
-```
-
----
-
-## 📊 Results _(Phase 2 — Upcoming)_
-
-Planned outputs:
-
-- Shaded learning curves across 10 seeds
-- Ablation study: effect of removing Shapley credit assignment
-- Ablation study: effect of removing CBF Safety Shield
-- Completion time variance under stochastic jitter
+1.  **Clone and install dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
+2.  **Verify environment compliance**:
+    ```bash
+    python test_marl_env.py
+    ```
+3.  **Verify policy routing architecture**:
+    ```bash
+    python test_fp3o.py
+    ```
 
 ---
 
-## Contributors
+## 👥 Contributors & Roles
 
-| Name               | Role               | Focus                                  |
-| ------------------ | ------------------ | -------------------------------------- |
-| **Saadman Sakib**  | Architect          | Shared Backbone & Pipeline Integration |
-| **Mohtasim Dipto** | Environment Dev    | N-Agent Scaling & Death Masking        |
-| **Mahin Islam**    | Documentation Lead | Statistical Rigor & Hypothesis Testing |
-
----
-
-## 📎 Citation
-
-If you build on this work, please cite the original ReLES-OTA framework and this extension. BibTeX entries will be added upon publication.
+*   **Saadman Sakib**: Lead Architect (Policy Routing, Env Design & CTDE Integration)
+*   **Mohtasim Dipto**: Environment Developer (Death Masking & Parallel Vectorization)
+*   **Mahin Islam**: Statistical & Analytical Lead (Welch's T-Tests, Confidence Intervals & Plot Generation)
 
 ---
 

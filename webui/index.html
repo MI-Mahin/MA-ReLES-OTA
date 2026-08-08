@@ -171,6 +171,18 @@
         </section>
       </section>
     </main>
+
+    <div id="chartModal" class="chart-modal" aria-hidden="true">
+      <div class="chart-modal__backdrop" data-close="true"></div>
+      <div class="chart-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="chartModalTitle">
+        <div class="chart-modal__header">
+          <h3 id="chartModalTitle">Chart preview</h3>
+          <button type="button" class="chart-modal__close" aria-label="Close enlarged chart">×</button>
+        </div>
+        <img id="chartModalImage" src="" alt="Enlarged chart preview">
+      </div>
+    </div>
+
     <script src="/static/app.js"></script>
   </body>
 </html>

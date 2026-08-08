@@ -9,6 +9,9 @@ const metricsBody = document.querySelector("#metricsTable tbody");
 const leaderboard = document.querySelector("#leaderboard");
 const charts = document.querySelector("#charts");
 const logBox = document.querySelector("#logBox");
+const chartModal = document.querySelector("#chartModal");
+const chartModalTitle = document.querySelector("#chartModalTitle");
+const chartModalImage = document.querySelector("#chartModalImage");
 
 let cudaAvailable = false;
 let totalTimesteps = Number(field("timesteps").value);
@@ -110,6 +113,23 @@ function renderLeaderboard(rows = []) {
   });
 }
 
+function openChartModal(item) {
+  chartModalTitle.textContent = item.name;
+  chartModalImage.src = `${item.url}&v=${item.modified}`;
+  chartModalImage.alt = item.name;
+  chartModal.classList.add("open");
+  chartModal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
+}
+
+function closeChartModal() {
+  chartModal.classList.remove("open");
+  chartModal.setAttribute("aria-hidden", "true");
+  chartModalImage.removeAttribute("src");
+  chartModalImage.alt = "";
+  document.body.classList.remove("modal-open");
+}
+
 function renderCharts(items = []) {
   charts.innerHTML = "";
   if (!items.length) {
@@ -117,8 +137,12 @@ function renderCharts(items = []) {
     return;
   }
   items.forEach((item) => {
-    const card = document.createElement("div");
+    const card = document.createElement("button");
+    card.type = "button";
     card.className = "chart-card";
+    card.dataset.name = item.name;
+    card.dataset.chartUrl = item.url;
+    card.dataset.modified = item.modified;
     card.innerHTML = `<strong>${item.name}</strong><img src="${item.url}&v=${item.modified}" alt="${item.name}">`;
     charts.appendChild(card);
   });
@@ -145,6 +169,41 @@ function renderState(state) {
 }
 
 form.addEventListener("input", updateRecommendation);
+
+charts.addEventListener("click", (event) => {
+  const card = event.target.closest(".chart-card");
+  if (!card) return;
+  openChartModal({
+    name: card.dataset.name,
+    url: card.dataset.chartUrl,
+    modified: card.dataset.modified,
+  });
+});
+
+charts.addEventListener("keydown", (event) => {
+  const card = event.target.closest(".chart-card");
+  if (!card || !(event.key === "Enter" || event.key === " ")) {
+    return;
+  }
+  event.preventDefault();
+  openChartModal({
+    name: card.dataset.name,
+    url: card.dataset.chartUrl,
+    modified: card.dataset.modified,
+  });
+});
+
+chartModal.addEventListener("click", (event) => {
+  if (event.target.matches("[data-close='true']") || event.target.matches(".chart-modal__close")) {
+    closeChartModal();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && chartModal.classList.contains("open")) {
+    closeChartModal();
+  }
+});
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();

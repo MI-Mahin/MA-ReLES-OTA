@@ -5,6 +5,9 @@ const recommendation = document.querySelector("#recommendation");
 const runState = document.querySelector("#runState");
 const runDot = document.querySelector("#runDot");
 const progressBar = document.querySelector("#progressBar");
+const seedProgressBar = document.querySelector("#seedProgressBar");
+const seedProgressText = document.querySelector("#seedProgressText");
+const stepProgressText = document.querySelector("#stepProgressText");
 const metricsBody = document.querySelector("#metricsTable tbody");
 const leaderboard = document.querySelector("#leaderboard");
 const charts = document.querySelector("#charts");
@@ -213,9 +216,22 @@ function renderState(state) {
   resetBtn.disabled = running;
   document.querySelector("#seedText").textContent = state.current_seed ? `Seed ${state.current_seed}` : "Seed -";
 
+  const totalSeeds = Math.max(1, Number(field("seeds").value) || 1);
+  const seedMatch = state.current_seed?.match(/(\d+)\s*\/\s*(\d+)/);
+  const currentSeedIndex = seedMatch ? Number(seedMatch[1]) : 0;
+  const seenSeedCount = seedMatch && totalSeeds > 0
+    ? Math.min(totalSeeds, running ? Math.max(0, currentSeedIndex - 1) : currentSeedIndex)
+    : 0;
+  const seedPercent = totalSeeds > 0 ? Math.min(100, Math.round((seenSeedCount / totalSeeds) * 100)) : 0;
+  seedProgressText.textContent = `${seenSeedCount}/${totalSeeds}`;
+  seedProgressBar.style.width = `${seedPercent}%`;
+
   const parsedProgress = Number(state.progress || 0);
-  const percent = parsedProgress > 100 ? Math.min(100, Math.round((parsedProgress / Math.max(totalTimesteps, parsedProgress)) * 100)) : parsedProgress;
-  progressBar.style.width = `${percent}%`;
+  const stepPercent = parsedProgress > 100
+    ? Math.min(100, Math.round((parsedProgress / Math.max(totalTimesteps, parsedProgress)) * 100))
+    : Math.min(100, Number.isFinite(parsedProgress) ? parsedProgress : 0);
+  progressBar.style.width = `${stepPercent}%`;
+  stepProgressText.textContent = `${Math.round(stepPercent)}%`;
 
   renderMetrics(state.metrics);
   renderLeaderboard(state.leaderboard);

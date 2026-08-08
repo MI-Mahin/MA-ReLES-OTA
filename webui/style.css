@@ -216,6 +216,12 @@ input:hover {
   cursor: not-allowed;
 }
 
+.primary:hover,
+.primary:focus-visible {
+  background: #fff;
+  color: var(--fg);
+}
+
 .device-box {
   display: flex;
   justify-content: space-between;
@@ -256,17 +262,40 @@ input:hover {
   font-size: 0.9rem;
 }
 
-.progress {
-  height: 18px;
-  border: 2px solid var(--line);
+.progress-stack {
+  display: grid;
+  gap: 8px;
   margin-bottom: 14px;
 }
 
-#progressBar {
+.progress-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+}
+
+.progress-meta strong {
+  font-size: 0.95rem;
+}
+
+.progress {
+  height: 18px;
+  border: 2px solid var(--line);
+  overflow: hidden;
+}
+
+#progressBar,
+#seedProgressBar {
   width: 0%;
   height: 100%;
   background: var(--fg);
   transition: width 0.25s ease;
+}
+
+#seedProgressBar {
+  background: #4f4f4f;
 }
 
 .metric-strip {

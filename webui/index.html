@@ -132,8 +132,21 @@
             <h2>Live Monitoring</h2>
             <span id="seedText" title="Current seed number from the running multi-seed experiment.">Seed -</span>
           </div>
-          <div class="progress" title="Estimated progress from SB3 total_timesteps output.">
-            <div id="progressBar"></div>
+          <div class="progress-stack" title="Seed-level and per-seed timestep progress for the active run.">
+            <div class="progress-meta">
+              <span>Seed progress</span>
+              <strong id="seedProgressText">0/10</strong>
+            </div>
+            <div class="progress">
+              <div id="seedProgressBar"></div>
+            </div>
+            <div class="progress-meta">
+              <span>Current seed progress</span>
+              <strong id="stepProgressText">0%</strong>
+            </div>
+            <div class="progress">
+              <div id="progressBar"></div>
+            </div>
           </div>
           <div class="metric-strip">
             <div title="Frames per second reported by Stable-Baselines3."><span>FPS</span><strong id="fps">-</strong></div>

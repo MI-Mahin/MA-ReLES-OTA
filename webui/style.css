@@ -133,10 +133,22 @@ h3 {
   border: 2px solid var(--fg);
   border-radius: 999px;
   display: inline-block;
+  background: transparent;
 }
 
-.dot.on {
-  background: var(--fg);
+.dot.running {
+  background: #2563eb;
+  border-color: #0b0b0b;
+}
+
+.dot.done {
+  background: #16a34a;
+  border-color: #16a34a;
+}
+
+.dot.error {
+  background: #dc2626;
+  border-color: #dc2626;
 }
 
 .grid {

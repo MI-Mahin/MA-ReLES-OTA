@@ -210,8 +210,12 @@ async function copyLastOutputLines() {
 function renderState(state) {
   setDeviceOptions(state.device || {});
   const running = Boolean(state.running);
-  runState.textContent = running ? "Running" : state.returncode === 0 ? "Done" : state.error ? "Error" : "Idle";
-  runDot.classList.toggle("on", running);
+  const status = running ? "running" : state.returncode === 0 ? "done" : state.error ? "error" : "idle";
+  runState.textContent = status === "running" ? "Running" : status === "done" ? "Done" : status === "error" ? "Error" : "Idle";
+  runDot.classList.remove("running", "done", "error");
+  if (status !== "idle") {
+    runDot.classList.add(status);
+  }
   form.querySelector(".primary").disabled = running;
   resetBtn.disabled = running;
   document.querySelector("#seedText").textContent = state.current_seed ? `Seed ${state.current_seed}` : "Seed -";

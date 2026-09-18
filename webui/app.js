@@ -40,8 +40,11 @@ function readPayload() {
     mode: data.get("mode"),
     batch_size: Number(data.get("batch_size")),
     safety: field("safety").checked,
-    bd_mode: field("bd_mode").checked,
+    constrained_network_mode: field("constrained_network_mode").checked,
     death_masking: field("death_masking").checked,
+    type_conditioning: field("type_conditioning").checked,
+    coupled_channel: field("coupled_channel").checked,
+    gateway_bw_mbps: Number(field("gateway_bw_mbps").value) || 50.0,
   };
 }
 
@@ -245,6 +248,18 @@ function renderState(state) {
 }
 
 form.addEventListener("input", updateRecommendation);
+
+const coupledChannelInput = field("coupled_channel");
+const gatewayBwGroup = document.querySelector("#gatewayBwGroup");
+function syncGatewayBwVisibility() {
+  if (coupledChannelInput && gatewayBwGroup) {
+    gatewayBwGroup.style.display = coupledChannelInput.checked ? "grid" : "none";
+  }
+}
+if (coupledChannelInput) {
+  coupledChannelInput.addEventListener("change", syncGatewayBwVisibility);
+  syncGatewayBwVisibility();
+}
 
 copyOutputBtn.addEventListener("click", copyLastOutputLines);
 

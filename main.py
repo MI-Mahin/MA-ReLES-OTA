@@ -93,8 +93,11 @@ def main():
     parser.add_argument("--n_epochs", type=int, default=TRAIN_CFG["n_epochs"], help="PPO gradient epochs per rollout")
     parser.add_argument("--ent_coef", type=float, default=TRAIN_CFG["ent_coef"], help="PPO entropy coefficient")
     parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto", help="Training device")
-    parser.add_argument("--bd_mode", type=lambda x: str(x).lower() == "true", default=True, help="Enable constrained BD network")
+    parser.add_argument("--constrained_network_mode", type=lambda x: str(x).lower() == "true", default=True, help="Enable constrained network mode")
     parser.add_argument("--death_masking", type=lambda x: str(x).lower() == "true", default=True, help="Enable death masking")
+    parser.add_argument("--type_conditioning", type=lambda x: str(x).lower() == "true", default=True, help="Enable semantic ECU type conditioning (False = blind/type-ablated)")
+    parser.add_argument("--coupled_channel", type=lambda x: str(x).lower() == "true", default=False, help="Enable shared gateway bandwidth contention (coupled channel mode)")
+    parser.add_argument("--gateway_bw_mbps", type=float, default=50.0, help="Total gateway downlink bandwidth (Mbps) in coupled mode")
     parser.add_argument("--compare_algorithm", type=str, default="", help="Compare results against this algorithm")
     args = parser.parse_args()
 
@@ -104,6 +107,8 @@ def main():
     print(f"  Mode:       {args.mode.upper()}")
     print(f"  Algorithm:  {args.algorithm.upper()}")
     print(f"  Safety:     {args.safety}")
+    print(f"  TypeCond:   {args.type_conditioning}")
+    print(f"  Coupled:    {args.coupled_channel} (Gateway: {args.gateway_bw_mbps} Mbps)")
     print(f"  Seeds:      {args.seeds}")
     print(f"  Agents:     {args.n_agents} | Blocks: {args.n_blocks}")
     if args.mode == "train":
@@ -112,14 +117,16 @@ def main():
     print(f"  Rollout:    {args.n_steps} x {args.n_envs} = {args.n_steps * args.n_envs}")
     print(f"  Batch size: {args.batch_size}")
     print(f"  Device:     {args.device}")
-    print(f"  BD Network: {args.bd_mode}")
+    print(f"  Constrained Network: {args.constrained_network_mode}")
     print("=" * 60)
 
     results_dir  = Path("results")
     results_dir.mkdir(parents=True, exist_ok=True)
     raw_results_file  = results_dir / "raw_seed_returns.json"
     leaderboard_path  = results_dir / "leaderboard.csv"
-    entry_name        = f"{args.algorithm.upper()}_Safety_{args.safety}"
+    type_suffix       = "" if args.type_conditioning else "_Blind"
+    coupled_suffix    = "_Coupled" if args.coupled_channel else ""
+    entry_name        = f"{args.algorithm.upper()}{type_suffix}{coupled_suffix}_Safety_{args.safety}"
     experiment_dir    = results_dir / "marl_models" / entry_name
 
     # ── Load existing raw returns so p-value comparisons stay intact ─────────
@@ -143,21 +150,24 @@ def main():
             # ── Train ───────────────────────────────────────────────────────
             t0 = time.time()
             train_mean_return = train_algorithm(
-                algorithm       = args.algorithm,
-                n_agents        = args.n_agents,
-                n_blocks        = args.n_blocks,
-                bd_mode         = args.bd_mode,
-                safety          = args.safety,
-                total_timesteps = args.timesteps,
-                save_dir        = seed_dir,
-                n_envs          = args.n_envs,
-                n_steps         = args.n_steps,
-                batch_size      = args.batch_size,
-                n_epochs        = args.n_epochs,
-                ent_coef        = args.ent_coef,
-                device          = args.device,
-                death_masking   = args.death_masking,
-                seed            = seed,
+                algorithm         = args.algorithm,
+                n_agents          = args.n_agents,
+                n_blocks          = args.n_blocks,
+                constrained_network_mode           = args.constrained_network_mode,
+                safety            = args.safety,
+                total_timesteps   = args.timesteps,
+                save_dir          = seed_dir,
+                n_envs            = args.n_envs,
+                n_steps           = args.n_steps,
+                batch_size        = args.batch_size,
+                n_epochs          = args.n_epochs,
+                ent_coef          = args.ent_coef,
+                device            = args.device,
+                death_masking     = args.death_masking,
+                type_conditioning = args.type_conditioning,
+                coupled_channel   = args.coupled_channel,
+                gateway_bw_mbps   = args.gateway_bw_mbps,
+                seed              = seed,
             )
             elapsed = time.time() - t0
             print(f"[Seed {seed + 1}/{args.seeds}] Training completed in {elapsed:.1f}s")
@@ -169,14 +179,17 @@ def main():
             # The critic is not used at test time — only the actor policies.
             print(f"[Seed {seed + 1}/{args.seeds}] Running {args.eval_episodes}-episode evaluation...")
             eval_result = evaluate_trained_model(
-                seed_dir        = seed_dir,
-                algorithm       = args.algorithm,
-                n_agents        = args.n_agents,
-                n_blocks        = args.n_blocks,
-                n_eval_episodes = args.eval_episodes,
-                safety          = args.safety,
-                bd_mode         = args.bd_mode,
-                verbose         = True,
+                seed_dir          = seed_dir,
+                algorithm         = args.algorithm,
+                n_agents          = args.n_agents,
+                n_blocks          = args.n_blocks,
+                n_eval_episodes   = args.eval_episodes,
+                safety            = args.safety,
+                constrained_network_mode           = args.constrained_network_mode,
+                type_conditioning = args.type_conditioning,
+                coupled_channel   = args.coupled_channel,
+                gateway_bw_mbps   = args.gateway_bw_mbps,
+                verbose           = True,
             )
 
             perf          = eval_result["mean_return"]
@@ -231,7 +244,7 @@ def main():
 
         # ── Log to training registry ─────────────────────────────────────────
         run_id = log_run(
-            algorithm   = args.algorithm,
+            algorithm   = f"{args.algorithm.upper()}{type_suffix}{coupled_suffix}",
             safety      = args.safety,
             n_seeds     = args.seeds,
             timesteps   = args.timesteps,
@@ -244,6 +257,9 @@ def main():
                 "mean_payload_cost":  round(mean_payload, 1),
                 "shield_rate":        round(mean_shield, 4),
                 "eval_episodes":      args.eval_episodes,
+                "type_conditioning":  args.type_conditioning,
+                "coupled_channel":    args.coupled_channel,
+                "gateway_bw_mbps":    args.gateway_bw_mbps,
             },
         )
         print(f"\n  Run #{run_id} recorded in training registry.")
@@ -260,7 +276,7 @@ def main():
                 print(f"  [warn] Chart generation skipped: {chart_err}")
 
         # ── Check benchmark targets ──────────────────────────────────────────
-        target = BENCHMARK_CFG["target_return_bd"]
+        target = BENCHMARK_CFG["target_return_constrained"]
         if mean_ret >= target:
             print(f"\n  ✅  BENCHMARK MET: {mean_ret:.2f} >= target {target}")
         else:
@@ -289,14 +305,17 @@ def main():
 
         try:
             all_eval = evaluate_all_seeds(
-                experiment_dir  = str(experiment_dir),
-                algorithm       = args.algorithm,
-                n_agents        = args.n_agents,
-                n_blocks        = args.n_blocks,
-                n_eval_episodes = args.eval_episodes,
-                safety          = args.safety,
-                bd_mode         = args.bd_mode,
-                verbose         = True,
+                experiment_dir    = str(experiment_dir),
+                algorithm         = args.algorithm,
+                n_agents          = args.n_agents,
+                n_blocks          = args.n_blocks,
+                n_eval_episodes   = args.eval_episodes,
+                safety            = args.safety,
+                constrained_network_mode           = args.constrained_network_mode,
+                type_conditioning = args.type_conditioning,
+                coupled_channel   = args.coupled_channel,
+                gateway_bw_mbps   = args.gateway_bw_mbps,
+                verbose           = True,
             )
         except Exception as e:
             print(f"  ❌  Evaluation failed: {e}")
@@ -348,7 +367,7 @@ def main():
         print(df.to_string())
 
         # Benchmark checks
-        target = BENCHMARK_CFG["target_return_bd"]
+        target = BENCHMARK_CFG["target_return_constrained"]
         if mean_ret >= target:
             print(f"\n  ✅  BENCHMARK MET: {mean_ret:.2f} >= target {target}")
         else:

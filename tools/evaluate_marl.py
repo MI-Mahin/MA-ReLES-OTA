@@ -82,9 +82,15 @@ def evaluate_trained_model(
     n_blocks: int         = 16,
     n_eval_episodes: int  = 20,
     safety: bool          = True,
-    bd_mode: bool         = True,
+    constrained_network_mode: bool = True,
+    type_conditioning: bool = True,
+    coupled_channel: bool = False,
+    gateway_bw_mbps: float = 50.0,
     verbose: bool         = False,
+    bd_mode: bool         = None,
 ) -> dict:
+    if bd_mode is not None:
+        constrained_network_mode = bd_mode
     """
     Run decentralized-execution evaluation of a saved MARL model.
 
@@ -106,6 +112,7 @@ def evaluate_trained_model(
     n_eval_episodes : number of independent test episodes (default: 20)
     safety          : whether the CBF safety shield was enabled during training
     bd_mode         : use Bangladesh network conditions for test env (default: True)
+    type_conditioning: enable semantic ECU type conditioning (False = blind)
     verbose         : print per-episode stats
 
     Returns
@@ -132,9 +139,12 @@ def evaluate_trained_model(
     eval_env = MultiAgentOTAEnv(
         n_agents          = n_agents,
         n_blocks          = n_blocks,
-        bd_mode           = bd_mode,
+        constrained_network_mode = constrained_network_mode,
         stochastic_latency= True,   # keep realistic stochastic conditions
         safety_shield     = safety,
+        type_conditioning = type_conditioning,
+        coupled_channel   = coupled_channel,
+        gateway_bw_mbps   = gateway_bw_mbps,
     )
 
     episode_returns:       list[float] = []
@@ -223,9 +233,15 @@ def evaluate_all_seeds(
     n_blocks: int         = 16,
     n_eval_episodes: int  = 20,
     safety: bool          = True,
-    bd_mode: bool         = True,
+    constrained_network_mode: bool = True,
+    type_conditioning: bool = True,
+    coupled_channel: bool = False,
+    gateway_bw_mbps: float = 50.0,
     verbose: bool         = True,
+    bd_mode: bool         = None,
 ) -> dict:
+    if bd_mode is not None:
+        constrained_network_mode = bd_mode
     """
     Evaluate all seeds under an experiment directory.
 
@@ -261,14 +277,15 @@ def evaluate_all_seeds(
     for seed_dir in seed_dirs:
         try:
             res = evaluate_trained_model(
-                seed_dir        = str(seed_dir),
-                algorithm       = algorithm,
-                n_agents        = n_agents,
-                n_blocks        = n_blocks,
-                n_eval_episodes = n_eval_episodes,
-                safety          = safety,
-                bd_mode         = bd_mode,
-                verbose         = verbose,
+                seed_dir          = str(seed_dir),
+                algorithm         = algorithm,
+                n_agents          = n_agents,
+                n_blocks          = n_blocks,
+                n_eval_episodes   = n_eval_episodes,
+                safety            = safety,
+                bd_mode           = bd_mode,
+                type_conditioning = type_conditioning,
+                verbose           = verbose,
             )
             per_seed_results.append(res)
             all_returns.append(res["mean_return"])
@@ -298,16 +315,18 @@ if __name__ == "__main__":
     parser.add_argument("--n_blocks",    type=int, default=16)
     parser.add_argument("--episodes",    type=int, default=20)
     parser.add_argument("--safety",      type=lambda x: x.lower() == "true", default=True)
+    parser.add_argument("--type_conditioning", type=lambda x: x.lower() == "true", default=True)
     args = parser.parse_args()
 
     result = evaluate_trained_model(
-        seed_dir        = args.seed_dir,
-        algorithm       = args.algorithm,
-        n_agents        = args.n_agents,
-        n_blocks        = args.n_blocks,
-        n_eval_episodes = args.episodes,
-        safety          = args.safety,
-        verbose         = True,
+        seed_dir          = args.seed_dir,
+        algorithm         = args.algorithm,
+        n_agents          = args.n_agents,
+        n_blocks          = args.n_blocks,
+        n_eval_episodes   = args.episodes,
+        safety            = args.safety,
+        type_conditioning = args.type_conditioning,
+        verbose           = True,
     )
     print("\n── Evaluation Result ──")
     for k, v in result.items():

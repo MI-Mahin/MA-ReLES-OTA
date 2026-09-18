@@ -5,5 +5,5 @@
   "bandwidth_mbps": 25.0,
   "jitter_ms": 35.0,
   "monsoon_multiplier": 1.3,
-  "notes": "Network-Parameters.pdf (Teammate 2, April 2026) — urban Dhaka 4G, OTA server 120 ms"
+  "notes": "Vehicular wireless channel parameters — urban 4G/5G cellular link with stochastic burst jitter"
 }
